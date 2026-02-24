@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Credits">
 <meta name="theme-color" content="#0a0f1e">
-<title>Card Credits</title>
+<title>Paulo's Card Credits</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -33,7 +33,6 @@ const LS_OWNER    = "cc_gh_owner";
 const LS_REPO     = "cc_gh_repo";
 const LS_FILEPATH = "cc_gh_filepath";
 
-// ─── CARD COLORS (updated per request) ───────────────────────
 const CARD_COLOR = {
   "Amex Platinum":  { bg:"#FFFFFF", text:"#0a0f1e" },
   "Amex Gold":      { bg:"#C9910A", text:"#0a0f1e" },
@@ -42,11 +41,41 @@ const CARD_COLOR = {
   "Delta Gold":     { bg:"#EA6C1A", text:"#ffffff" },
 };
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const CAT_ICON = { TRAVEL:"✈", HOTEL:"⌂", DINING:"⊕", STREAMING:"▶", SHOPPING:"◈", TRANSPORT:"◎", SUBS:"↻", DELTA:"△" };
 
+// ─── PERIOD HELPERS ──────────────────────────────────────────
+function getPeriodMonths(cadence, monthIdx) {
+  switch (cadence) {
+    case "monthly":      return [monthIdx];
+    case "quarterly":  { const q = Math.floor(monthIdx/3); return [q*3, q*3+1, q*3+2]; }
+    case "semi-annual":  return monthIdx < 6 ? [0,1,2,3,4,5] : [6,7,8,9,10,11];
+    case "annual":       return [0,1,2,3,4,5,6,7,8,9,10,11];
+    default:             return [monthIdx];
+  }
+}
+
+function getPeriodMax(benefit) {
+  switch (benefit.cadence) {
+    case "monthly":      return Math.round(benefit.annual / 12);
+    case "quarterly":    return Math.round(benefit.annual / 4);
+    case "semi-annual":  return Math.round(benefit.annual / 2);
+    case "annual":       return benefit.annual;
+    default:             return benefit.annual;
+  }
+}
+
+function getPeriodLabel(cadence, monthIdx) {
+  switch (cadence) {
+    case "monthly":      return MONTHS[monthIdx];
+    case "quarterly":  { const q = Math.floor(monthIdx/3); return `Q${q+1}`; }
+    case "semi-annual":  return monthIdx < 6 ? "H1" : "H2";
+    case "annual":       return "2026";
+    default:             return "";
+  }
+}
+
 // ─── BENEFITS ────────────────────────────────────────────────
-// badge: "QTR" | "SEMI" | null
 const BENEFITS = [
   // TRAVEL
   { id:"t1",  cat:"TRAVEL",    name:"Airline Incidental",         card:"Amex Platinum",  annual:200, cadence:"annual",      badge:null },
@@ -70,9 +99,9 @@ const BENEFITS = [
   { id:"d6",  cat:"DINING",    name:"Resy Credit",                card:"Delta Reserve",  annual:240, cadence:"monthly",     badge:null,
     note:"$20/mo at any U.S. Resy restaurant. Statement credit on Delta Reserve bill. Enroll separately." },
   { id:"d3",  cat:"DINING",    name:"Dining Credit",              card:"Amex Gold",      annual:120, cadence:"monthly",     badge:null,
-    note:"$10/mo statement credit: Grubhub, Cheesecake Factory, Goldbelly, Wine.com, Milk Bar, Shake Shack. Most reliable: Grubhub monthly order." },
+    note:"$10/mo statement credit: Grubhub, Cheesecake Factory, Goldbelly, Wine.com, Milk Bar, Shake Shack." },
   { id:"d4",  cat:"DINING",    name:"Resy Credit",                card:"Delta Platinum", annual:120, cadence:"monthly",     badge:null,
-    note:"$10/mo at any U.S. Resy restaurant. Statement credit on Delta Platinum bill. Enroll separately." },
+    note:"$10/mo at any U.S. Resy restaurant. Statement credit on Delta Platinum bill." },
   { id:"d5",  cat:"DINING",    name:"Dunkin'",                    card:"Amex Gold",      annual:84,  cadence:"monthly",     badge:null,
     note:"$7/mo via Amex Offers. Must enroll offer each year. Does not roll over month-to-month." },
   // STREAMING
@@ -82,14 +111,14 @@ const BENEFITS = [
   { id:"sh1", cat:"SHOPPING",  name:"Lululemon",                  card:"Amex Platinum",  annual:300, cadence:"quarterly",   badge:"QTR",
     note:"$75/quarter in-store or lululemon.com (not outlets). Enroll first. Expires Mar/Jun/Sep/Dec 31 — high leakage risk." },
   { id:"sh2", cat:"SHOPPING",  name:"Saks Fifth Avenue",          card:"Amex Platinum",  annual:100, cadence:"semi-annual", badge:"SEMI",
-    note:"$50 Jan–Jun + $50 Jul–Dec at Saks or saks.com. Enroll first. Don't let H1 credit expire Jun 30." },
+    note:"$50 Jan–Jun + $50 Jul–Dec at Saks or saks.com. Don't let H1 credit expire Jun 30." },
   // TRANSPORT
   { id:"tr1", cat:"TRANSPORT", name:"Uber Cash",                  card:"Amex Platinum",  annual:200, cadence:"monthly",     badge:null,
     note:"$15/mo deposited into Uber app wallet on 1st of month ($35 in Dec). Does not roll over. Must add Platinum card to Uber app." },
   { id:"tr2", cat:"TRANSPORT", name:"Uber One Membership",        card:"Amex Platinum",  annual:120, cadence:"annual",      badge:null,
     note:"$120/yr toward Uber One. Pay the $9.99/mo auto-renewing subscription with Platinum — reimbursed as statement credit on Amex bill." },
   { id:"tr3", cat:"TRANSPORT", name:"Uber Cash",                  card:"Amex Gold",      annual:120, cadence:"monthly",     badge:null,
-    note:"$10/mo deposited into Uber app wallet on 1st of month. Separate pool from Platinum Uber Cash. Does not roll over." },
+    note:"$10/mo deposited into Uber app wallet on 1st of month. Separate pool from Platinum. Does not roll over." },
   { id:"tr4", cat:"TRANSPORT", name:"Rideshare (Uber/Lyft)",      card:"Delta Platinum", annual:120, cadence:"monthly",     badge:null,
     note:"$10/mo on Uber or Lyft. Statement credit on Delta Platinum bill after charge posts." },
   // SUBSCRIPTIONS
@@ -97,14 +126,13 @@ const BENEFITS = [
     note:"$12.95/mo. Set Platinum as Walmart+ payment method and forget. Includes Paramount+ Essential." },
   // DELTA
   { id:"dl1", cat:"DELTA",     name:"Companion Certificate",      card:"Delta Reserve",  annual:650, cadence:"annual",      badge:null,
-    note:"First/Comfort+/Main Cabin. Domestic + select international. Taxes/fees only (~$22–$250). Issued each card anniversary. Log in month you book." },
+    note:"First/Comfort+/Main Cabin. Domestic + select international. Taxes/fees only (~$22–$250). Log in month you book." },
   { id:"dl2", cat:"DELTA",     name:"Companion Certificate",      card:"Delta Platinum", annual:350, cadence:"annual",      badge:null,
-    note:"Main Cabin. Domestic + AK/HI/Caribbean/Mexico. Taxes/fees only. Issued each card anniversary. Log in month you book." },
+    note:"Main Cabin. Domestic + AK/HI/Caribbean/Mexico. Taxes/fees only. Log in month you book." },
   { id:"dl3", cat:"DELTA",     name:"Flight Credit ($10K spend)", card:"Delta Gold",     annual:200, cadence:"annual",      badge:null,
     note:"$200 Delta flight credit after $10K calendar-year spend on card. Conditional on hitting spend threshold." },
 ];
 
-// ─── CARDS (AF includes AU fees where applicable) ─────────────
 const CARDS = [
   { name:"Amex Platinum",  af:895, auFee:195, auLabel:"+ $195 Tammy AU" },
   { name:"Amex Gold",      af:325, auFee:0,   auLabel:"Tammy AU free"   },
@@ -114,6 +142,7 @@ const CARDS = [
 ];
 
 const fmt    = (n) => n === 0 ? "—" : `$${Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+const fmtRaw = (n) => `$${Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:0})}`;
 const pctStr = (n) => `${Math.round(Math.min(n,1)*100)}%`;
 
 // ─── GITHUB ──────────────────────────────────────────────────
@@ -134,13 +163,12 @@ async function ghWrite(token, owner, repo, filepath, data, sha) {
   return (await r.json()).content.sha;
 }
 
-// ─── COMPONENTS ──────────────────────────────────────────────
+// ─── SMALL COMPONENTS ────────────────────────────────────────
 function CardPill({ card }) {
   const c = CARD_COLOR[card] || { bg:"#3b82f6", text:"#fff" };
   return (
-    <span style={{ fontSize:10, padding:"2px 8px", borderRadius:4,
-      background:c.bg, color:c.text, fontWeight:500, letterSpacing:"0.03em",
-      whiteSpace:"nowrap" }}>
+    <span style={{ fontSize:11, padding:"2px 8px", borderRadius:4,
+      background:c.bg, color:c.text, fontWeight:500, letterSpacing:"0.03em", whiteSpace:"nowrap" }}>
       {card}
     </span>
   );
@@ -148,13 +176,12 @@ function CardPill({ card }) {
 
 function BadgePill({ type }) {
   if (!type) return null;
-  const styles = {
+  const s = {
     QTR:  { bg:"rgba(245,158,11,0.18)",  color:"#f59e0b" },
     SEMI: { bg:"rgba(129,140,248,0.18)", color:"#818cf8" },
-  };
-  const s = styles[type] || styles.QTR;
+  }[type];
   return (
-    <span style={{ fontSize:9, padding:"2px 7px", borderRadius:4,
+    <span style={{ fontSize:10, padding:"2px 8px", borderRadius:4,
       background:s.bg, color:s.color, fontWeight:600, letterSpacing:"0.07em" }}>
       {type}
     </span>
@@ -171,18 +198,18 @@ function App() {
     repo:     localStorage.getItem(LS_REPO)     || "",
     filepath: localStorage.getItem(LS_FILEPATH) || "data.json",
   }));
-  const [configured,     setConfigured]     = useState(() => !!(localStorage.getItem(LS_TOKEN) && localStorage.getItem(LS_OWNER) && localStorage.getItem(LS_REPO)));
-  const [data,           setData]           = useState({});
-  const [sha,            setSha]            = useState(null);
-  const [loading,        setLoading]        = useState(false);
-  const [syncStatus,     setSyncStatus]     = useState("idle");
-  const [view,           setView]           = useState("tracker");
-  const [activeMonth,    setActiveMonth]    = useState(currentMonth);
-  const [activeCat,      setActiveCat]      = useState("ALL");
-  const [editingId,      setEditingId]      = useState(null);
-  const [inputVal,       setInputVal]       = useState("");
-  const [showNote,       setShowNote]       = useState(null);
-  const [showSettings,   setShowSettings]   = useState(false);
+  const [configured,   setConfigured]   = useState(() => !!(localStorage.getItem(LS_TOKEN) && localStorage.getItem(LS_OWNER) && localStorage.getItem(LS_REPO)));
+  const [data,         setData]         = useState({});
+  const [sha,          setSha]          = useState(null);
+  const [loading,      setLoading]      = useState(false);
+  const [syncStatus,   setSyncStatus]   = useState("idle");
+  const [view,         setView]         = useState("tracker");
+  const [activeMonth,  setActiveMonth]  = useState(currentMonth);
+  const [activeCat,    setActiveCat]    = useState("ALL");
+  const [editingId,    setEditingId]    = useState(null);
+  const [inputVal,     setInputVal]     = useState("");
+  const [showNote,     setShowNote]     = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
   const saveTimer = useRef(null);
 
   useEffect(() => { if (configured) load(); }, [configured]);
@@ -219,28 +246,54 @@ function App() {
     setEditingId(null); setInputVal("");
   }
   function saveConfig() {
-    [LS_TOKEN,LS_OWNER,LS_REPO,LS_FILEPATH].forEach((k,i)=>
-      localStorage.setItem(k, [config.token,config.owner,config.repo,config.filepath][i]));
+    localStorage.setItem(LS_TOKEN,    config.token);
+    localStorage.setItem(LS_OWNER,    config.owner);
+    localStorage.setItem(LS_REPO,     config.repo);
+    localStorage.setItem(LS_FILEPATH, config.filepath);
     setConfigured(true); setShowSettings(false);
   }
 
-  const getVal      = (bid,m)     => data[`${bid}-${m}`] || 0;
-  const benefitUsed = (bid)       => MONTHS.reduce((s,_,i)=>s+getVal(bid,i),0);
-  const cardUsed    = (name)      => BENEFITS.filter(b=>b.card===name).reduce((s,b)=>s+benefitUsed(b.id),0);
-  const cardAvail   = (name)      => BENEFITS.filter(b=>b.card===name).reduce((s,b)=>s+b.annual,0);
-  const cardTotalAF = (c)         => c.af + c.auFee;
-  const grandAvail  = BENEFITS.reduce((s,b)=>s+b.annual,0);
-  const grandUsed   = BENEFITS.reduce((s,b)=>s+benefitUsed(b.id),0);
-  const grandAF     = CARDS.reduce((s,c)=>s+cardTotalAF(c),0);
-  const grandNet    = grandUsed - grandAF;
-  const monthHasData= (m)         => BENEFITS.some(b=>getVal(b.id,m)>0);
+  // ─── DATA HELPERS ──────────────────────────────────────────
+  const getVal = (bid, m) => data[`${bid}-${m}`] || 0;
 
-  const cats     = ["ALL",...Array.from(new Set(BENEFITS.map(b=>b.cat)))];
+  // Total used across entire year for a benefit
+  const annualUsed = (bid) => MONTHS.reduce((s,_,i) => s + getVal(bid,i), 0);
+
+  // Total used within a benefit's current period (as of activeMonth)
+  const periodUsed = (benefit) => {
+    const months = getPeriodMonths(benefit.cadence, activeMonth);
+    return months.reduce((s, m) => s + getVal(benefit.id, m), 0);
+  };
+
+  // Max for a single period
+  const periodMax = (benefit) => getPeriodMax(benefit);
+
+  // Is this period fully used?
+  const periodFull = (benefit) => periodUsed(benefit) >= periodMax(benefit);
+
+  // Does the active month have an entry?
+  const monthVal = (bid) => getVal(bid, activeMonth);
+
+  // Which month in the period has data (for "go back to edit" hint)?
+  const periodEntryMonth = (benefit) => {
+    const months = getPeriodMonths(benefit.cadence, activeMonth);
+    return months.find(m => getVal(benefit.id, m) > 0);
+  };
+
+  const cardAnnualUsed = (name) => BENEFITS.filter(b=>b.card===name).reduce((s,b)=>s+annualUsed(b.id),0);
+  const cardAvail      = (name) => BENEFITS.filter(b=>b.card===name).reduce((s,b)=>s+b.annual,0);
+  const cardTotalAF    = (c)    => c.af + c.auFee;
+  const grandAvail     = BENEFITS.reduce((s,b)=>s+b.annual,0);
+  const grandUsed      = BENEFITS.reduce((s,b)=>s+annualUsed(b.id),0);
+  const grandAF        = CARDS.reduce((s,c)=>s+cardTotalAF(c),0);
+  const grandNet       = grandUsed - grandAF;
+  const monthHasData   = (m) => BENEFITS.some(b=>getVal(b.id,m)>0);
+
+  const cats    = ["ALL",...Array.from(new Set(BENEFITS.map(b=>b.cat)))];
   const filtered = activeCat==="ALL" ? BENEFITS : BENEFITS.filter(b=>b.cat===activeCat);
   const grouped  = filtered.reduce((acc,b)=>{ (acc[b.cat]=acc[b.cat]||[]).push(b); return acc; },{});
 
-  // safe-area top: used throughout
-  const safeTop = "env(safe-area-inset-top, 44px)";
+  const safeTop    = "env(safe-area-inset-top, 44px)";
   const safePadTop = `calc(${safeTop} + 14px)`;
 
   // ── SETUP ──────────────────────────────────────────────────
@@ -250,12 +303,11 @@ function App() {
       paddingTop:`calc(${safeTop} + 24px)` }}>
       <div style={{ width:"100%", maxWidth:380, background:"#111827",
         borderRadius:16, border:"1px solid #1f2d40", padding:24 }}>
-        <div style={{ fontFamily:"Fraunces,serif", fontSize:22, fontWeight:300,
+        <div style={{ fontFamily:"Fraunces,serif", fontSize:24, fontWeight:300,
           letterSpacing:"-0.02em", marginBottom:4 }}>
-          card <span style={{color:"#3b82f6",fontStyle:"italic"}}>credits</span>
+          Paulo's card <span style={{color:"#3b82f6",fontStyle:"italic"}}>credits</span>
         </div>
-        <div style={{fontSize:11,color:"#4a5a6e",letterSpacing:"0.08em",marginBottom:22}}>GITHUB SETUP</div>
-
+        <div style={{fontSize:12,color:"#4a5a6e",letterSpacing:"0.08em",marginBottom:22}}>GITHUB SETUP</div>
         {[
           {key:"owner",    label:"GitHub Username",       ph:"paulo-madruga"},
           {key:"repo",     label:"Repository Name",       ph:"credit-cards"},
@@ -263,29 +315,28 @@ function App() {
           {key:"token",    label:"Personal Access Token", ph:"ghp_xxxxxxxxxxxx", t:"password"},
         ].map(({key,label,ph,t})=>(
           <div key={key} style={{marginBottom:16}}>
-            <div style={{fontSize:11,color:"#7a8ba0",letterSpacing:"0.06em",marginBottom:6}}>{label}</div>
+            <div style={{fontSize:12,color:"#7a8ba0",letterSpacing:"0.06em",marginBottom:6}}>{label}</div>
             <input type={t||"text"} value={config[key]}
               onChange={e=>setConfig(p=>({...p,[key]:e.target.value}))}
               placeholder={ph} autoCapitalize="none" autoCorrect="off"
-              style={{ width:"100%", padding:"11px 12px", background:"#0a0f1e",
+              style={{ width:"100%", padding:"12px", background:"#0a0f1e",
                 border:"1px solid #1f2d40", borderRadius:8, color:"#e8edf5",
-                fontFamily:"'DM Mono',monospace", fontSize:14, outline:"none" }} />
+                fontFamily:"'DM Mono',monospace", fontSize:15, outline:"none" }} />
           </div>
         ))}
-
-        <div style={{fontSize:11,color:"#4a5a6e",lineHeight:1.7,marginBottom:20}}>
+        <div style={{fontSize:12,color:"#4a5a6e",lineHeight:1.7,marginBottom:20}}>
           Token needs <strong style={{color:"#7a8ba0"}}>repo</strong> scope.<br/>
           GitHub → Settings → Developer Settings → Personal Access Tokens → Tokens (classic)
         </div>
-        <button onClick={saveConfig} style={{ width:"100%", padding:"13px 0",
+        <button onClick={saveConfig} style={{ width:"100%", padding:"14px",
           background:"#3b82f6", border:"none", borderRadius:8, color:"#fff",
-          fontSize:13, cursor:"pointer", fontFamily:"'DM Mono',monospace",
+          fontSize:14, cursor:"pointer", fontFamily:"'DM Mono',monospace",
           letterSpacing:"0.06em", fontWeight:500 }}>Connect &amp; Load Data</button>
         {showSettings && (
-          <button onClick={()=>setShowSettings(false)} style={{ width:"100%", padding:"11px 0",
-            background:"transparent", border:"1px solid #1f2d40", borderRadius:8, color:"#7a8ba0",
-            fontSize:13, cursor:"pointer", fontFamily:"'DM Mono',monospace",
-            letterSpacing:"0.06em", marginTop:10 }}>Cancel</button>
+          <button onClick={()=>setShowSettings(false)} style={{ width:"100%", padding:"12px",
+            background:"transparent", border:"1px solid #1f2d40", borderRadius:8,
+            color:"#7a8ba0", fontSize:14, cursor:"pointer",
+            fontFamily:"'DM Mono',monospace", marginTop:10 }}>Cancel</button>
         )}
       </div>
     </div>
@@ -293,11 +344,10 @@ function App() {
 
   if (loading) return (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
-      minHeight:"100vh", background:"#0a0f1e",
-      paddingTop:`calc(${safeTop} + 20px)` }}>
+      minHeight:"100vh", background:"#0a0f1e" }}>
       <div style={{textAlign:"center"}}>
-        <div style={{fontSize:32,marginBottom:14}}>◎</div>
-        <div style={{fontSize:12,color:"#4a5a6e",letterSpacing:"0.12em"}}>LOADING FROM GITHUB</div>
+        <div style={{fontSize:34,marginBottom:14}}>◎</div>
+        <div style={{fontSize:13,color:"#4a5a6e",letterSpacing:"0.12em"}}>LOADING FROM GITHUB</div>
       </div>
     </div>
   );
@@ -309,16 +359,17 @@ function App() {
       {/* NOTE MODAL */}
       {showNote && (
         <div onClick={()=>setShowNote(null)} style={{ position:"fixed", inset:0, zIndex:200,
-          background:"rgba(0,0,0,0.75)", backdropFilter:"blur(4px)",
+          background:"rgba(0,0,0,0.8)", backdropFilter:"blur(4px)",
           display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:"#111827", borderRadius:14,
             border:"1px solid #1f2d40", padding:22, maxWidth:340, width:"100%" }}>
-            <div style={{fontSize:15,fontWeight:500,color:"#e8edf5",marginBottom:8}}>{showNote.name}</div>
+            <div style={{fontSize:16,fontWeight:500,color:"#e8edf5",marginBottom:8}}>{showNote.name}</div>
             <CardPill card={showNote.card} />
-            <div style={{fontSize:11,color:"#7a8ba0",lineHeight:1.8,marginTop:12,marginBottom:18}}>{showNote.note}</div>
-            <button onClick={()=>setShowNote(null)} style={{ width:"100%", padding:"11px 0",
+            <div style={{fontSize:12,color:"#7a8ba0",lineHeight:1.8,marginTop:12,marginBottom:18}}>{showNote.note}</div>
+            <button onClick={()=>setShowNote(null)} style={{ width:"100%", padding:"12px",
               background:"transparent", border:"1px solid #1f2d40", borderRadius:8,
-              color:"#7a8ba0", fontSize:13, cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>Close</button>
+              color:"#7a8ba0", fontSize:14, cursor:"pointer",
+              fontFamily:"'DM Mono',monospace" }}>Close</button>
           </div>
         </div>
       )}
@@ -327,16 +378,14 @@ function App() {
       <div style={{ position:"sticky", top:0, zIndex:100,
         background:"rgba(10,15,30,0.97)", backdropFilter:"blur(20px)",
         WebkitBackdropFilter:"blur(20px)", borderBottom:"1px solid #1f2d40",
-        paddingTop: safePadTop, paddingLeft:14, paddingRight:14 }}>
+        paddingTop:safePadTop, paddingLeft:14, paddingRight:14 }}>
 
-        {/* Title row */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
           <div>
-            <div style={{ fontFamily:"Fraunces,serif", fontSize:22, fontWeight:300,
-              letterSpacing:"-0.02em" }}>
-              card <span style={{color:"#3b82f6",fontStyle:"italic"}}>credits</span>
+            <div style={{ fontFamily:"Fraunces,serif", fontSize:20, fontWeight:300, letterSpacing:"-0.02em", lineHeight:1.2 }}>
+              Paulo's card <span style={{color:"#3b82f6",fontStyle:"italic"}}>credits</span>
             </div>
-            <div style={{fontSize:10,color:"#4a5a6e",letterSpacing:"0.08em",marginTop:3}}>
+            <div style={{fontSize:11,color:"#4a5a6e",letterSpacing:"0.08em",marginTop:3}}>
               {syncStatus==="syncing" && <span style={{color:"#f59e0b"}}>● SYNCING</span>}
               {syncStatus==="saved"   && <span style={{color:"#10b981"}}>● SAVED</span>}
               {syncStatus==="error"   && <span style={{color:"#ef4444"}}>● SYNC ERROR</span>}
@@ -344,9 +393,10 @@ function App() {
             </div>
           </div>
           <div style={{textAlign:"right"}}>
-            <div style={{fontSize:11,color:"#7a8ba0"}}>captured YTD</div>
-            <div style={{fontSize:26,fontWeight:500,color:"#10b981",
-              letterSpacing:"-0.02em",lineHeight:1.1}}>{fmt(grandUsed)}</div>
+            <div style={{fontSize:12,color:"#7a8ba0"}}>captured YTD</div>
+            <div style={{fontSize:26,fontWeight:500,color:"#10b981",letterSpacing:"-0.02em",lineHeight:1.1}}>
+              {fmt(grandUsed)}
+            </div>
             <div style={{fontSize:11,color:grandNet>=0?"#10b981":"#ef4444",marginTop:2}}>
               {grandNet>=0?"+":""}{fmt(grandNet)} vs fees
             </div>
@@ -360,7 +410,7 @@ function App() {
               flex:v==="⚙"?0:1, padding:v==="⚙"?"9px 16px":"9px 0",
               border:"none", background:"transparent",
               color:view===v&&v!=="⚙"?"#e8edf5":"#4a5a6e",
-              fontSize:v==="⚙"?16:12, letterSpacing:v==="⚙"?"0":"0.08em",
+              fontSize:v==="⚙"?17:13, letterSpacing:v==="⚙"?"0":"0.08em",
               cursor:"pointer",
               borderBottom:(view===v&&v!=="⚙")?"2px solid #3b82f6":"2px solid transparent",
               fontFamily:"'DM Mono',monospace", textTransform:v==="⚙"?"none":"uppercase",
@@ -377,11 +427,11 @@ function App() {
               const isActive=i===activeMonth, hasDat=monthHasData(i), isCurr=i===currentMonth;
               return (
                 <button key={m} onClick={()=>setActiveMonth(i)} style={{
-                  flexShrink:0, padding:"6px 13px", borderRadius:20,
+                  flexShrink:0, padding:"6px 14px", borderRadius:20,
                   border:`1px solid ${isActive?"#3b82f6":hasDat?"#10b981":"#1f2d40"}`,
                   background:isActive?"#3b82f6":"transparent",
                   color:isActive?"#fff":hasDat?"#10b981":isCurr?"#e8edf5":"#4a5a6e",
-                  fontSize:12, cursor:"pointer", fontFamily:"'DM Mono',monospace",
+                  fontSize:13, cursor:"pointer", fontFamily:"'DM Mono',monospace",
                   fontWeight:(isActive||isCurr)?500:400,
                   letterSpacing:"0.04em", position:"relative" }}>
                   {m}
@@ -399,16 +449,16 @@ function App() {
       {/* ══ TRACKER ══ */}
       {view==="tracker" && (
         <div style={{paddingBottom:80}}>
-          {/* Cat filter */}
-          <div style={{display:"flex",gap:6,overflowX:"auto",padding:"10px 14px",
-            borderBottom:"1px solid #1f2d40"}}>
+
+          {/* Category filter */}
+          <div style={{display:"flex",gap:6,overflowX:"auto",padding:"10px 14px",borderBottom:"1px solid #1f2d40"}}>
             {cats.map(cat=>(
               <button key={cat} onClick={()=>setActiveCat(cat)} style={{
-                flexShrink:0, padding:"5px 12px", borderRadius:20,
+                flexShrink:0, padding:"5px 13px", borderRadius:20,
                 border:`1px solid ${activeCat===cat?"#3b82f6":"#1f2d40"}`,
                 background:activeCat===cat?"rgba(59,130,246,0.12)":"transparent",
                 color:activeCat===cat?"#3b82f6":"#4a5a6e",
-                fontSize:11, cursor:"pointer",
+                fontSize:12, cursor:"pointer",
                 fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em" }}>
                 {cat==="ALL"?"ALL":`${CAT_ICON[cat]} ${cat}`}
               </button>
@@ -417,107 +467,135 @@ function App() {
 
           {Object.entries(grouped).map(([cat,benefits])=>(
             <div key={cat}>
-              {/* Section header */}
-              <div style={{padding:"10px 14px 4px",fontSize:10,letterSpacing:"0.12em",
+              <div style={{padding:"10px 14px 4px",fontSize:11,letterSpacing:"0.12em",
                 color:"#4a5a6e",display:"flex",alignItems:"center",gap:8}}>
                 <span>{CAT_ICON[cat]}</span><span>{cat}</span>
                 <div style={{flex:1,height:1,background:"#1f2d40"}}/>
               </div>
 
               {benefits.map(benefit=>{
-                const used      = benefitUsed(benefit.id);
-                const monthVal  = getVal(benefit.id, activeMonth);
-                const pct       = Math.min(used/benefit.annual,1);
-                const remaining = benefit.annual - used;
-                const isEditing = editingId===benefit.id;
-                const rowBg     = benefit.badge==="QTR"
-                  ? "rgba(245,158,11,0.05)"
-                  : benefit.badge==="SEMI"
-                  ? "rgba(129,140,248,0.05)"
-                  : "#111827";
-                const rowBorder = benefit.badge==="QTR"
-                  ? "rgba(245,158,11,0.2)"
-                  : benefit.badge==="SEMI"
-                  ? "rgba(129,140,248,0.2)"
-                  : "#1a2535";
+                const pUsed  = periodUsed(benefit);
+                const pMax   = periodMax(benefit);
+                const pFull  = pUsed >= pMax;
+                const pPct   = Math.min(pUsed / pMax, 1);
+                const mVal   = monthVal(benefit.id);
+                const isEdit = editingId === benefit.id;
+                const pLabel = getPeriodLabel(benefit.cadence, activeMonth);
+                const entryM = periodEntryMonth(benefit); // month index that has data this period
+                // For monthly: remaining is just pMax - pUsed
+                // For others: show period remaining
+                const pRemaining = pMax - pUsed;
+                // Annual progress bar still shows full-year progress
+                const annUsed  = annualUsed(benefit.id);
+                const annPct   = Math.min(annUsed / benefit.annual, 1);
 
                 return (
-                  <div key={benefit.id} style={{ margin:"0 10px 8px", borderRadius:10,
-                    background:rowBg, border:`1px solid ${rowBorder}` }}>
+                  <div key={benefit.id} style={{
+                    margin:"0 10px 8px", borderRadius:10,
+                    background:"#111827",
+                    border:"1px solid #1a2535",
+                  }}>
                     <div style={{padding:"12px 14px"}}>
 
-                      {/* Name row */}
+                      {/* Name + badges row */}
                       <div style={{display:"flex",justifyContent:"space-between",
                         alignItems:"flex-start",marginBottom:8}}>
                         <div style={{flex:1,paddingRight:8}}>
                           <div style={{display:"flex",alignItems:"center",gap:5,
                             marginBottom:6,flexWrap:"wrap"}}>
                             {benefit.badge && <BadgePill type={benefit.badge}/>}
-                            <span style={{fontSize:14,fontWeight:500,color:"#e8edf5"}}>
+                            <span style={{fontSize:15,fontWeight:500,color:"#e8edf5"}}>
                               {benefit.name}
                             </span>
                             {benefit.note && (
                               <button onClick={()=>setShowNote(benefit)} style={{
                                 background:"transparent",border:"none",color:"#3b82f6",
-                                fontSize:14,cursor:"pointer",padding:"0 2px",lineHeight:1}}>ⓘ</button>
+                                fontSize:15,cursor:"pointer",padding:"0 2px",lineHeight:1}}>ⓘ</button>
                             )}
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
                             <CardPill card={benefit.card}/>
-                            <span style={{fontSize:10,color:"#4a5a6e"}}>{benefit.cadence}</span>
+                            <span style={{fontSize:11,color:"#4a5a6e"}}>{benefit.cadence}</span>
                           </div>
                         </div>
+
+                        {/* Period amount (right side) */}
                         <div style={{textAlign:"right",flexShrink:0}}>
-                          <div style={{fontSize:16,fontWeight:500,
-                            color:used>0?"#10b981":"#4a5a6e"}}>{fmt(used)}</div>
-                          <div style={{fontSize:10,color:"#4a5a6e"}}>of {fmt(benefit.annual)}</div>
-                          {remaining>0&&used>0&&(
-                            <div style={{fontSize:9,color:"#ef4444"}}>{fmt(remaining)} left</div>
+                          <div style={{fontSize:17,fontWeight:500,
+                            color:pUsed>0?"#10b981":"#4a5a6e"}}>
+                            {pUsed>0 ? fmtRaw(pUsed) : "—"}
+                          </div>
+                          <div style={{fontSize:11,color:"#4a5a6e"}}>
+                            of {fmtRaw(pMax)} <span style={{color:"#2a3a4e"}}>{pLabel}</span>
+                          </div>
+                          {pRemaining>0 && pUsed>0 && (
+                            <div style={{fontSize:10,color:"#ef4444"}}>{fmtRaw(pRemaining)} left</div>
+                          )}
+                          {/* Annual total if multi-period and has data */}
+                          {benefit.cadence !== "monthly" && benefit.cadence !== "annual" && annUsed > 0 && (
+                            <div style={{fontSize:10,color:"#4a5a6e",marginTop:2}}>
+                              {fmtRaw(annUsed)} / {fmtRaw(benefit.annual)} yr
+                            </div>
                           )}
                         </div>
                       </div>
 
-                      {/* Progress bar */}
-                      <div style={{height:4,borderRadius:2,background:"#1a2535",
-                        marginBottom:10,overflow:"hidden"}}>
+                      {/* Progress bar — shows period progress */}
+                      <div style={{height:4,borderRadius:2,background:"#1a2535",marginBottom:10,overflow:"hidden"}}>
                         <div style={{height:"100%",borderRadius:2,
-                          width:`${pct*100}%`,
-                          background:pct>=1?"#10b981":pct>0.5?"#3b82f6":"#6366f1",
+                          width:`${pPct*100}%`,
+                          background:pPct>=1?"#10b981":pPct>0.5?"#3b82f6":"#6366f1",
                           transition:"width 0.4s ease"}}/>
                       </div>
 
-                      {/* Month log row */}
-                      <div style={{display:"flex",alignItems:"center",
-                        justifyContent:"space-between"}}>
+                      {/* Log row */}
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                         <div style={{fontSize:11,color:"#4a5a6e"}}>{MONTHS[activeMonth]}</div>
-                        {isEditing ? (
+
+                        {/* Period maxed — locked, show hint */}
+                        {pFull && mVal === 0 ? (
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontSize:11,color:"#10b981",letterSpacing:"0.04em"}}>
+                              {pLabel} used ✓
+                            </span>
+                            {entryM !== undefined && entryM !== activeMonth && (
+                              <button onClick={()=>setActiveMonth(entryM)} style={{
+                                fontSize:10,color:"#3b82f6",background:"transparent",
+                                border:"1px solid rgba(59,130,246,0.3)",
+                                borderRadius:5,padding:"3px 8px",cursor:"pointer",
+                                fontFamily:"'DM Mono',monospace"}}>
+                                edit {MONTHS[entryM]}
+                              </button>
+                            )}
+                          </div>
+                        ) : isEdit ? (
                           <div style={{display:"flex",gap:6,alignItems:"center"}}>
                             <input autoFocus type="number" value={inputVal}
                               onChange={e=>setInputVal(e.target.value)}
                               onKeyDown={e=>e.key==="Enter"&&handleSave(benefit.id)}
                               placeholder="0"
-                              style={{ width:84, padding:"6px 8px", background:"#0a0f1e",
+                              style={{ width:86, padding:"6px 8px", background:"#0a0f1e",
                                 border:"1px solid #3b82f6", borderRadius:6, color:"#e8edf5",
-                                fontFamily:"'DM Mono',monospace", fontSize:14,
+                                fontFamily:"'DM Mono',monospace", fontSize:15,
                                 textAlign:"right", outline:"none" }}/>
                             <button onClick={()=>handleSave(benefit.id)} style={{
                               padding:"6px 14px",borderRadius:6,background:"#10b981",
-                              border:"none",color:"#fff",fontSize:12,
+                              border:"none",color:"#fff",fontSize:13,
                               fontFamily:"'DM Mono',monospace",cursor:"pointer"}}>✓</button>
                             <button onClick={()=>setEditingId(null)} style={{
                               padding:"6px 10px",borderRadius:6,background:"transparent",
-                              border:"1px solid #1f2d40",color:"#4a5a6e",fontSize:12,
+                              border:"1px solid #1f2d40",color:"#4a5a6e",fontSize:13,
                               fontFamily:"'DM Mono',monospace",cursor:"pointer"}}>✕</button>
                           </div>
-                        ):(
-                          <button onClick={()=>{setEditingId(benefit.id);setInputVal(monthVal||"");}} style={{
+                        ) : (
+                          <button onClick={()=>{setEditingId(benefit.id);setInputVal(mVal||"");}} style={{
                             padding:"6px 16px",borderRadius:6,
-                            background:monthVal>0?"rgba(16,185,129,0.1)":"rgba(59,130,246,0.08)",
-                            border:`1px solid ${monthVal>0?"rgba(16,185,129,0.3)":"rgba(59,130,246,0.2)"}`,
-                            color:monthVal>0?"#10b981":"#3b82f6",
-                            fontSize:13,cursor:"pointer",
+                            background:mVal>0?"rgba(16,185,129,0.1)":"rgba(59,130,246,0.08)",
+                            border:`1px solid ${mVal>0?"rgba(16,185,129,0.3)":"rgba(59,130,246,0.2)"}`,
+                            color:mVal>0?"#10b981":"#3b82f6",
+                            fontSize:14,cursor:"pointer",
                             fontFamily:"'DM Mono',monospace"}}>
-                            {monthVal>0?`${fmt(monthVal)} ✓`:"+ log"}
+                            {mVal>0 ? `${fmtRaw(mVal)} ✓` : "+ log"}
                           </button>
                         )}
                       </div>
@@ -534,10 +612,9 @@ function App() {
       {view==="summary" && (
         <div style={{padding:"14px 10px 100px"}}>
 
-          {/* Portfolio totals */}
           <div style={{ background:"#111827", borderRadius:12, border:"1px solid #1a2535",
             padding:16, marginBottom:12 }}>
-            <div style={{fontSize:10,color:"#4a5a6e",letterSpacing:"0.1em",marginBottom:10}}>PORTFOLIO</div>
+            <div style={{fontSize:11,color:"#4a5a6e",letterSpacing:"0.1em",marginBottom:10}}>PORTFOLIO</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
               {[
                 {label:"Annual Fees", val:grandAF,    color:"#ef4444", neg:true},
@@ -545,28 +622,26 @@ function App() {
                 {label:"Captured",    val:grandUsed,  color:"#10b981"},
               ].map(({label,val,color,neg})=>(
                 <div key={label} style={{textAlign:"center"}}>
-                  <div style={{fontSize:9,color:"#4a5a6e",marginBottom:4,letterSpacing:"0.06em"}}>{label}</div>
-                  <div style={{fontSize:17,fontWeight:500,color}}>{neg?"−":""}{fmt(val)}</div>
+                  <div style={{fontSize:10,color:"#4a5a6e",marginBottom:4,letterSpacing:"0.06em"}}>{label}</div>
+                  <div style={{fontSize:18,fontWeight:500,color}}>{neg?"−":""}{fmtRaw(val)}</div>
                 </div>
               ))}
             </div>
             <div style={{height:5,borderRadius:3,background:"#1a2535",overflow:"hidden",marginBottom:6}}>
               <div style={{height:"100%",borderRadius:3,
                 width:`${Math.min(grandUsed/grandAvail*100,100)}%`,
-                background:"linear-gradient(90deg,#3b82f6,#10b981)",
-                transition:"width 0.6s ease"}}/>
+                background:"linear-gradient(90deg,#3b82f6,#10b981)",transition:"width 0.6s ease"}}/>
             </div>
             <div style={{display:"flex",justifyContent:"space-between"}}>
-              <span style={{fontSize:10,color:"#4a5a6e"}}>{pctStr(grandUsed/grandAvail)} of credits captured</span>
-              <span style={{fontSize:10,color:grandNet>=0?"#10b981":"#ef4444",fontWeight:500}}>
+              <span style={{fontSize:11,color:"#4a5a6e"}}>{pctStr(grandUsed/grandAvail)} of credits captured</span>
+              <span style={{fontSize:11,color:grandNet>=0?"#10b981":"#ef4444",fontWeight:500}}>
                 net {grandNet>=0?"+":""}{fmt(grandNet)}
               </span>
             </div>
           </div>
 
-          {/* Per-card */}
           {CARDS.map(card=>{
-            const used    = cardUsed(card.name);
+            const used    = cardAnnualUsed(card.name);
             const avail   = cardAvail(card.name);
             const totalAF = cardTotalAF(card);
             const net     = used - totalAF;
@@ -577,26 +652,20 @@ function App() {
               <div key={card.name} style={{ background:"#111827", borderRadius:12,
                 border:"1px solid #1a2535", borderLeft:`3px solid ${cc.bg}`,
                 padding:14, marginBottom:10 }}>
-
                 <div style={{display:"flex",justifyContent:"space-between",
                   alignItems:"flex-start",marginBottom:10}}>
                   <div>
-                    <div style={{fontSize:15,fontWeight:500,color:cc.bg,marginBottom:4}}>
-                      {card.name}
-                    </div>
-                    <div style={{fontSize:10,color:"#4a5a6e",lineHeight:1.6}}>
-                      AF <span style={{color:"#ef4444"}}>{fmt(card.af)}</span>
-                      {card.auFee>0 && <span style={{color:"#ef4444"}}> + {fmt(card.auFee)} AU</span>}
-                      {card.auLabel && card.auFee===0 && (
-                        <span> · <span style={{color:"#4a5a6e"}}>{card.auLabel}</span></span>
-                      )}
-                      <br/>avail <span style={{color:"#7a8ba0"}}>{fmt(avail)}</span>
+                    <div style={{fontSize:16,fontWeight:500,color:cc.bg,marginBottom:4}}>{card.name}</div>
+                    <div style={{fontSize:11,color:"#4a5a6e",lineHeight:1.6}}>
+                      AF <span style={{color:"#ef4444"}}>{fmtRaw(card.af)}</span>
+                      {card.auFee>0 && <span style={{color:"#ef4444"}}> + {fmtRaw(card.auFee)} AU</span>}
+                      {card.auLabel && card.auFee===0 && <span> · {card.auLabel}</span>}
+                      <br/>avail <span style={{color:"#7a8ba0"}}>{fmtRaw(avail)}</span>
                     </div>
                   </div>
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:18,fontWeight:500,
-                      color:used>0?"#10b981":"#4a5a6e"}}>{fmt(used)}</div>
-                    <div style={{fontSize:10,color:net>=0?"#10b981":"#ef4444"}}>
+                    <div style={{fontSize:19,fontWeight:500,color:used>0?"#10b981":"#4a5a6e"}}>{fmt(used)}</div>
+                    <div style={{fontSize:11,color:net>=0?"#10b981":"#ef4444"}}>
                       {net>=0?"+":""}{fmt(net)} net
                     </div>
                   </div>
@@ -608,26 +677,26 @@ function App() {
                 ].map(({label,p,color})=>(
                   <div key={label} style={{marginBottom:8}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                      <span style={{fontSize:9,color:"#4a5a6e",letterSpacing:"0.06em"}}>{label}</span>
-                      <span style={{fontSize:9,color:p>=1?"#10b981":"#4a5a6e"}}>{pctStr(p)}</span>
+                      <span style={{fontSize:10,color:"#4a5a6e",letterSpacing:"0.06em"}}>{label}</span>
+                      <span style={{fontSize:10,color:p>=1?"#10b981":"#4a5a6e"}}>{pctStr(p)}</span>
                     </div>
                     <div style={{height:4,borderRadius:2,background:"#1a2535",overflow:"hidden"}}>
-                      <div style={{height:"100%",borderRadius:2,
-                        width:`${p*100}%`,background:color,transition:"width 0.5s ease"}}/>
+                      <div style={{height:"100%",borderRadius:2,width:`${p*100}%`,
+                        background:color,transition:"width 0.5s ease"}}/>
                     </div>
                   </div>
                 ))}
 
                 <div style={{borderTop:"1px solid #1a2535",paddingTop:8,marginTop:6}}>
                   {BENEFITS.filter(b=>b.card===card.name).map(b=>{
-                    const u=benefitUsed(b.id);
+                    const u = annualUsed(b.id);
                     return (
                       <div key={b.id} style={{display:"flex",justifyContent:"space-between",
                         alignItems:"center",padding:"4px 0"}}>
-                        <span style={{fontSize:10,color:"#7a8ba0"}}>{b.name}</span>
+                        <span style={{fontSize:11,color:"#7a8ba0"}}>{b.name}</span>
                         <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                          <span style={{fontSize:10,color:u>0?"#10b981":"#4a5a6e"}}>{fmt(u)}</span>
-                          <span style={{fontSize:9,color:"#2a3a4e"}}>/ {fmt(b.annual)}</span>
+                          <span style={{fontSize:11,color:u>0?"#10b981":"#4a5a6e"}}>{fmt(u)}</span>
+                          <span style={{fontSize:10,color:"#2a3a4e"}}>/ {fmtRaw(b.annual)}</span>
                         </div>
                       </div>
                     );
@@ -646,9 +715,8 @@ function App() {
         background:"rgba(10,15,30,0.97)", backdropFilter:"blur(20px)",
         borderTop:"1px solid #1a2535",
         padding:`8px 16px calc(env(safe-area-inset-bottom, 16px) + 8px)`,
-        display:"flex", justifyContent:"center",
-      }}>
-        <div style={{fontSize:10,color:"#2a3a4e",letterSpacing:"0.08em"}}>
+        display:"flex", justifyContent:"center" }}>
+        <div style={{fontSize:11,color:"#2a3a4e",letterSpacing:"0.08em"}}>
           {view==="tracker"
             ? `LOGGING ${MONTHS[activeMonth].toUpperCase()}  ·  TAP ROW TO ENTER AMOUNT`
             : "YEAR-TO-DATE SUMMARY  ·  ALL CARDS"}
