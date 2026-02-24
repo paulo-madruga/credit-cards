@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Credits">
+<meta name="theme-color" content="#0a0f1e">
+<title>Card Credits</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #0a0f1e; overscroll-behavior: none; }
+  body { font-family: 'DM Mono', monospace; color: #e8edf5; overflow-x: hidden; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  ::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ─── CONFIG ──────────────────────────────────────────────────
+// User sets these once via the settings screen; stored in localStorage
+const LS_TOKEN    = "cc_gh_token";
+const LS_OWNER    = "cc_gh_owner";
+const LS_REPO     = "cc_gh_repo";
+const LS_FILEPATH = "cc_gh_filepath"; // e.g. "data.json"
+
+// ─── BENEFITS DATA ───────────────────────────────────────────
+const BENEFITS = [
+  // TRAVEL
+  { id:"t1",  cat:"TRAVEL",    name:"Airline Incidental",         card:"Amex Platinum",  annual:200, cadence:"annual",      quarterly:false },
+  { id:"t2",  cat:"TRAVEL",    name:"CLEAR+",                     card:"Amex Platinum",  annual:209, cadence:"annual",      quarterly:false },
+  { id:"t3",  cat:"TRAVEL",    name:"Global Entry / TSA Pre",     card:"Amex Platinum",  annual:27,  cadence:"annual",      quarterly:false },
+  // HOTEL
+  { id:"h1",  cat:"HOTEL",     name:"FHR Credit H1 (Jan–Jun)",    card:"Amex Platinum",  annual:300, cadence:"semi-annual", quarterly:false },
+  { id:"h2",  cat:"HOTEL",     name:"FHR Credit H2 (Jul–Dec)",    card:"Amex Platinum",  annual:300, cadence:"semi-annual", quarterly:false },
+  { id:"h3",  cat:"HOTEL",     name:"Delta Stays",                card:"Delta Reserve",  annual:150, cadence:"annual",      quarterly:false },
+  { id:"h4",  cat:"HOTEL",     name:"Delta Stays",                card:"Delta Platinum", annual:120, cadence:"annual",      quarterly:false },
+  { id:"h5",  cat:"HOTEL",     name:"Delta Stays",                card:"Delta Gold",     annual:100, cadence:"annual",      quarterly:false },
+  // DINING
+  { id:"d1",  cat:"DINING",    name:"Resy Credit",                card:"Amex Platinum",  annual:400, cadence:"quarterly",   quarterly:true  },
+  { id:"d2",  cat:"DINING",    name:"Resy Credit",                card:"Amex Gold",      annual:50,  cadence:"semi-annual", quarterly:false },
+  { id:"d3",  cat:"DINING",    name:"Dining Credit",              card:"Amex Gold",      annual:120, cadence:"monthly",     quarterly:false,
+    note:"$10/mo: Grubhub, Cheesecake Factory, Goldbelly, Wine.com, Milk Bar, Shake Shack. Statement credit on Amex Gold bill." },
+  { id:"d4",  cat:"DINING",    name:"Resy Credit",                card:"Delta Platinum", annual:120, cadence:"monthly",     quarterly:false },
+  { id:"d5",  cat:"DINING",    name:"Dunkin'",                    card:"Amex Gold",      annual:84,  cadence:"monthly",     quarterly:false },
+  // STREAMING
+  { id:"s1",  cat:"STREAMING", name:"Digital Entertainment",      card:"Amex Platinum",  annual:300, cadence:"monthly",     quarterly:false,
+    note:"$25/mo: Disney+, ESPN+, Hulu, Peacock, Paramount+, YouTube Premium, YouTube TV, NYT, WSJ." },
+  // SHOPPING
+  { id:"sh1", cat:"SHOPPING",  name:"Lululemon",                  card:"Amex Platinum",  annual:300, cadence:"quarterly",   quarterly:true  },
+  { id:"sh2", cat:"SHOPPING",  name:"Saks H1 (Jan–Jun)",          card:"Amex Platinum",  annual:50,  cadence:"semi-annual", quarterly:false },
+  { id:"sh3", cat:"SHOPPING",  name:"Saks H2 (Jul–Dec)",          card:"Amex Platinum",  annual:50,  cadence:"semi-annual", quarterly:false },
+  // TRANSPORT
+  { id:"tr1", cat:"TRANSPORT", name:"Uber Cash",                  card:"Amex Platinum",  annual:200, cadence:"monthly",     quarterly:false,
+    note:"$15/mo ($35 Dec). Deposited directly into Uber app wallet on 1st of month. Does not roll over." },
+  { id:"tr2", cat:"TRANSPORT", name:"Uber One Membership",        card:"Amex Platinum",  annual:120, cadence:"monthly",     quarterly:false,
+    note:"Pay $9.99/mo Uber One subscription with Platinum. Reimbursed as statement credit on Amex bill." },
+  { id:"tr3", cat:"TRANSPORT", name:"Uber Cash",                  card:"Amex Gold",      annual:120, cadence:"monthly",     quarterly:false,
+    note:"$10/mo. Deposited into Uber app wallet on 1st of month. Separate pool from Platinum. Does not roll over." },
+  { id:"tr4", cat:"TRANSPORT", name:"Rideshare (Uber/Lyft)",      card:"Delta Platinum", annual:120, cadence:"monthly",     quarterly:false,
+    note:"$10/mo on Uber or Lyft. Statement credit on Amex Delta Platinum bill after charge posts." },
+  // SUBSCRIPTIONS
+  { id:"sub1",cat:"SUBS",      name:"Walmart+",                   card:"Amex Platinum",  annual:155, cadence:"monthly",     quarterly:false,
+    note:"$12.95/mo auto-billed. Set Platinum as Walmart+ payment method. Set and forget." },
+  // DELTA
+  { id:"dl1", cat:"DELTA",     name:"Companion Certificate",      card:"Delta Reserve",  annual:650, cadence:"annual",      quarterly:false,
+    note:"First/Comfort+/Main Cabin. Domestic + select international. Taxes/fees only (~$22–$250). Log in month you book." },
+  { id:"dl2", cat:"DELTA",     name:"Companion Certificate",      card:"Delta Platinum", annual:350, cadence:"annual",      quarterly:false,
+    note:"Main Cabin. Domestic + AK/HI/Caribbean/Mexico. Taxes/fees only. Log in month you book." },
+  { id:"dl3", cat:"DELTA",     name:"Flight Credit ($10K spend)", card:"Delta Gold",     annual:200, cadence:"annual",      quarterly:false,
+    note:"$200 Delta flight credit after $10K calendar-year spend on card. Conditional." },
+];
+
+const CARDS = [
+  { name:"Amex Platinum",  af:895 },
+  { name:"Amex Gold",      af:325 },
+  { name:"Delta Reserve",  af:650 },
+  { name:"Delta Platinum", af:350 },
+  { name:"Delta Gold",     af:150 },
+];
+
+const CARD_COLOR = {
+  "Amex Platinum":  "#6366f1",
+  "Amex Gold":      "#d97706",
+  "Delta Reserve":  "#0ea5e9",
+  "Delta Platinum": "#06b6d4",
+  "Delta Gold":     "#10b981",
+};
+
+const CAT_ICON = { TRAVEL:"✈", HOTEL:"⌂", DINING:"⊕", STREAMING:"▶", SHOPPING:"◈", TRANSPORT:"◎", SUBS:"↻", DELTA:"△" };
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+const fmt = (n) => n === 0 ? "—" : `$${Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+const pctStr = (n) => `${Math.round(Math.min(n,1)*100)}%`;
+
+// ─── GITHUB STORAGE ──────────────────────────────────────────
+async function ghFetch(token, owner, repo, filepath) {
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filepath}`;
+  const r = await fetch(url, { headers: { Authorization: `token ${token}`, Accept: "application/vnd.github+json" } });
+  if (!r.ok) throw new Error(`GitHub fetch failed: ${r.status}`);
+  const json = await r.json();
+  const content = JSON.parse(atob(json.content.replace(/\n/g,"")));
+  return { data: content, sha: json.sha };
+}
+
+async function ghWrite(token, owner, repo, filepath, data, sha) {
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filepath}`;
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  const body = { message: "update credits data", content, sha };
+  const r = await fetch(url, {
+    method: "PUT",
+    headers: { Authorization: `token ${token}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`GitHub write failed: ${r.status}`);
+  const json = await r.json();
+  return json.content.sha;
+}
+
+// ─── MAIN APP ────────────────────────────────────────────────
+function App() {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+
+  // GitHub config
+  const [config, setConfig] = useState(() => ({
+    token:    localStorage.getItem(LS_TOKEN)    || "",
+    owner:    localStorage.getItem(LS_OWNER)    || "",
+    repo:     localStorage.getItem(LS_REPO)     || "",
+    filepath: localStorage.getItem(LS_FILEPATH) || "data.json",
+  }));
+  const [configured, setConfigured] = useState(() =>
+    !!(localStorage.getItem(LS_TOKEN) && localStorage.getItem(LS_OWNER) && localStorage.getItem(LS_REPO))
+  );
+
+  // App state
+  const [data, setData]         = useState({});     // { "benefitId-monthIdx": amount }
+  const [sha, setSha]           = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [saving, setSaving]     = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | saved | error
+  const [view, setView]         = useState("tracker");
+  const [activeMonth, setActiveMonth] = useState(currentMonth);
+  const [activeCategory, setActiveCategory] = useState("ALL");
+  const [editingId, setEditingId] = useState(null);
+  const [inputVal, setInputVal] = useState("");
+  const [showNote, setShowNote] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const saveTimer = useRef(null);
+
+  // Load data on mount
+  useEffect(() => {
+    if (!configured) return;
+    loadData();
+  }, [configured]);
+
+  async function loadData() {
+    setLoading(true);
+    setSyncStatus("syncing");
+    try {
+      const { data: d, sha: s } = await ghFetch(config.token, config.owner, config.repo, config.filepath);
+      setData(d);
+      setSha(s);
+      setSyncStatus("idle");
+    } catch(e) {
+      setSyncStatus("error");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Debounced save
+  const scheduleSave = useCallback((newData, currentSha) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSyncStatus("idle");
+    saveTimer.current = setTimeout(async () => {
+      setSyncStatus("syncing");
+      try {
+        const newSha = await ghWrite(config.token, config.owner, config.repo, config.filepath, newData, currentSha);
+        setSha(newSha);
+        setSyncStatus("saved");
+        setTimeout(() => setSyncStatus("idle"), 2000);
+      } catch(e) {
+        setSyncStatus("error");
+        console.error(e);
+      }
+    }, 1200);
+  }, [config]);
+
+  function updateVal(benefitId, monthIdx, val) {
+    const key = `${benefitId}-${monthIdx}`;
+    const newData = { ...data, [key]: val };
+    if (val === 0) delete newData[key];
+    setData(newData);
+    scheduleSave(newData, sha);
+  }
+
+  function handleSave(benefitId) {
+    const val = parseFloat(inputVal) || 0;
+    updateVal(benefitId, activeMonth, val);
+    setEditingId(null);
+    setInputVal("");
+  }
+
+  function saveConfig() {
+    localStorage.setItem(LS_TOKEN, config.token);
+    localStorage.setItem(LS_OWNER, config.owner);
+    localStorage.setItem(LS_REPO, config.repo);
+    localStorage.setItem(LS_FILEPATH, config.filepath);
+    setConfigured(true);
+    setShowSettings(false);
+  }
+
+  // Computed values
+  const getVal = (bid, m) => data[`${bid}-${m}`] || 0;
+  const totalForBenefit = (bid) => MONTHS.reduce((s,_,i) => s + getVal(bid,i), 0);
+  const totalForCard = (cardName) => BENEFITS.filter(b=>b.card===cardName).reduce((s,b)=>s+totalForBenefit(b.id),0);
+  const availForCard = (cardName) => BENEFITS.filter(b=>b.card===cardName).reduce((s,b)=>s+b.annual,0);
+  const grandAvail   = BENEFITS.reduce((s,b)=>s+b.annual,0);
+  const grandUsed    = BENEFITS.reduce((s,b)=>s+totalForBenefit(b.id),0);
+  const grandAF      = CARDS.reduce((s,c)=>s+c.af,0);
+  const grandNet     = grandUsed - grandAF;
+  const monthHasData = (m) => BENEFITS.some(b=>getVal(b.id,m)>0);
+
+  const categories   = ["ALL",...Array.from(new Set(BENEFITS.map(b=>b.cat)))];
+  const filtered     = activeCategory==="ALL" ? BENEFITS : BENEFITS.filter(b=>b.cat===activeCategory);
+  const grouped      = filtered.reduce((acc,b)=>{ (acc[b.cat]=acc[b.cat]||[]).push(b); return acc; },{});
+
+  // ── SETUP SCREEN ──
+  if (!configured || showSettings) {
+    return (
+      <div style={styles.screen}>
+        <div style={styles.setupCard}>
+          <div style={{marginBottom:24}}>
+            <div style={styles.title}>card <span style={{color:"#3b82f6",fontStyle:"italic"}}>credits</span></div>
+            <div style={styles.subtitle}>GitHub Storage Setup</div>
+          </div>
+          {[
+            { key:"owner",    label:"GitHub Username",  placeholder:"your-username" },
+            { key:"repo",     label:"Repository Name",  placeholder:"card-credits" },
+            { key:"filepath", label:"Data File",        placeholder:"data.json" },
+            { key:"token",    label:"Personal Access Token", placeholder:"ghp_xxxxxxxxxxxx", type:"password" },
+          ].map(({key,label,placeholder,type}) => (
+            <div key={key} style={{marginBottom:16}}>
+              <div style={styles.inputLabel}>{label}</div>
+              <input
+                type={type||"text"}
+                value={config[key]}
+                onChange={e=>setConfig(p=>({...p,[key]:e.target.value}))}
+                placeholder={placeholder}
+                style={styles.input}
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+            </div>
+          ))}
+          <div style={{fontSize:10,color:"#4a5a6e",marginBottom:20,lineHeight:1.6}}>
+            Token needs <strong style={{color:"#7a8ba0"}}>repo</strong> scope only.<br/>
+            GitHub → Settings → Developer Settings → Personal Access Tokens → Tokens (classic)
+          </div>
+          <button onClick={saveConfig} style={styles.btnPrimary}>Connect & Load Data</button>
+          {showSettings && (
+            <button onClick={()=>setShowSettings(false)} style={{...styles.btnGhost,marginTop:10}}>Cancel</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── LOADING ──
+  if (loading) {
+    return (
+      <div style={{...styles.screen, justifyContent:"center", alignItems:"center"}}>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:28,marginBottom:12}}>◎</div>
+          <div style={{fontSize:11,color:"#4a5a6e",letterSpacing:"0.1em"}}>LOADING FROM GITHUB</div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── MAIN APP ──
+  return (
+    <div style={styles.app}>
+
+      {/* NOTE MODAL */}
+      {showNote && (
+        <div onClick={()=>setShowNote(null)} style={styles.overlay}>
+          <div onClick={e=>e.stopPropagation()} style={styles.modal}>
+            <div style={{fontSize:13,fontWeight:500,color:"#e8edf5",marginBottom:6}}>{showNote.name}</div>
+            <div style={{fontSize:10,color:"#7a8ba0",lineHeight:1.7,marginBottom:16}}>{showNote.note}</div>
+            <button onClick={()=>setShowNote(null)} style={styles.btnGhost}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER */}
+      <div style={styles.header}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+          <div>
+            <div style={styles.title}>card <span style={{color:"#3b82f6",fontStyle:"italic"}}>credits</span></div>
+            <div style={{fontSize:9,color:"#4a5a6e",letterSpacing:"0.1em",marginTop:2}}>
+              {syncStatus==="syncing" && <span style={{color:"#f59e0b"}}>● SYNCING</span>}
+              {syncStatus==="saved"   && <span style={{color:"#10b981"}}>● SAVED</span>}
+              {syncStatus==="error"   && <span style={{color:"#ef4444"}}>● SYNC ERROR — check connection</span>}
+              {syncStatus==="idle"    && <span>2026 TRACKER</span>}
+            </div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:10,color:"#7a8ba0"}}>captured YTD</div>
+            <div style={{fontSize:24,fontWeight:500,color:"#10b981",letterSpacing:"-0.02em",lineHeight:1}}>{fmt(grandUsed)}</div>
+            <div style={{fontSize:10,color:grandNet>=0?"#10b981":"#ef4444",marginTop:2}}>
+              {grandNet>=0?"+":""}{fmt(grandNet)} vs fees
+            </div>
+          </div>
+        </div>
+
+        {/* View tabs */}
+        <div style={{display:"flex",borderBottom:"1px solid #1f2d40",marginBottom:0}}>
+          {["tracker","summary","⚙"].map(v=>(
+            <button key={v} onClick={()=>v==="⚙"?setShowSettings(true):setView(v)} style={{
+              flex: v==="⚙"?0:1,
+              padding: v==="⚙"?"8px 14px":"8px 0",
+              border:"none", background:"transparent",
+              color: view===v?"#e8edf5":"#4a5a6e",
+              fontSize: v==="⚙"?14:10,
+              letterSpacing:v==="⚙"?"0":"0.08em",
+              cursor:"pointer",
+              borderBottom: (view===v&&v!=="⚙")?"2px solid #3b82f6":"2px solid transparent",
+              fontFamily:"'DM Mono',monospace",
+              textTransform: v==="⚙"?"none":"uppercase",
+              transition:"all 0.15s",
+              marginBottom:-1,
+            }}>{v}</button>
+          ))}
+        </div>
+
+        {/* Month strip — tracker only */}
+        {view==="tracker" && (
+          <div style={{display:"flex",gap:6,overflowX:"auto",padding:"10px 0 2px"}}>
+            {MONTHS.map((m,i)=>{
+              const isActive = i===activeMonth;
+              const hasDat   = monthHasData(i);
+              const isCurr   = i===currentMonth;
+              return (
+                <button key={m} onClick={()=>setActiveMonth(i)} style={{
+                  flexShrink:0, padding:"5px 11px", borderRadius:20,
+                  border:`1px solid ${isActive?"#3b82f6":hasDat?"#10b981":"#1f2d40"}`,
+                  background: isActive?"#3b82f6":"transparent",
+                  color: isActive?"#fff":hasDat?"#10b981":isCurr?"#e8edf5":"#4a5a6e",
+                  fontSize:11, cursor:"pointer",
+                  fontFamily:"'DM Mono',monospace",
+                  fontWeight:(isActive||isCurr)?500:400,
+                  letterSpacing:"0.04em", position:"relative",
+                }}>
+                  {m}
+                  {isCurr && !isActive && (
+                    <span style={{position:"absolute",top:-3,right:-3,width:6,height:6,
+                      borderRadius:"50%",background:"#3b82f6",border:"1px solid #0a0f1e"}}/>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ══ TRACKER VIEW ══ */}
+      {view==="tracker" && (
+        <div style={{paddingBottom:60}}>
+
+          {/* Category filter */}
+          <div style={{display:"flex",gap:6,overflowX:"auto",padding:"10px 14px",borderBottom:"1px solid #1f2d40"}}>
+            {categories.map(cat=>(
+              <button key={cat} onClick={()=>setActiveCategory(cat)} style={{
+                flexShrink:0, padding:"4px 10px", borderRadius:20,
+                border:`1px solid ${activeCategory===cat?"#3b82f6":"#1f2d40"}`,
+                background: activeCategory===cat?"rgba(59,130,246,0.12)":"transparent",
+                color: activeCategory===cat?"#3b82f6":"#4a5a6e",
+                fontSize:10, cursor:"pointer",
+                fontFamily:"'DM Mono',monospace", letterSpacing:"0.06em",
+              }}>
+                {cat==="ALL"?"ALL":`${CAT_ICON[cat]} ${cat}`}
+              </button>
+            ))}
+          </div>
+
+          {/* Benefit rows */}
+          {Object.entries(grouped).map(([cat,benefits])=>(
+            <div key={cat}>
+              <div style={{padding:"10px 14px 4px",fontSize:9,letterSpacing:"0.12em",color:"#4a5a6e",
+                display:"flex",alignItems:"center",gap:8}}>
+                <span>{CAT_ICON[cat]}</span><span>{cat}</span>
+                <div style={{flex:1,height:1,background:"#1f2d40"}}/>
+              </div>
+
+              {benefits.map(benefit=>{
+                const used     = totalForBenefit(benefit.id);
+                const monthVal = getVal(benefit.id, activeMonth);
+                const pct      = Math.min(used/benefit.annual,1);
+                const remaining= benefit.annual - used;
+                const isEditing= editingId===benefit.id;
+
+                return (
+                  <div key={benefit.id} style={{
+                    margin:"0 10px 8px",
+                    borderRadius:10,
+                    background: benefit.quarterly?"rgba(245,158,11,0.05)":"#111827",
+                    border:`1px solid ${benefit.quarterly?"rgba(245,158,11,0.18)":"#1a2535"}`,
+                  }}>
+                    <div style={{padding:"10px 12px"}}>
+
+                      {/* Top row */}
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                        <div style={{flex:1,paddingRight:8}}>
+                          <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:3,flexWrap:"wrap"}}>
+                            {benefit.quarterly && (
+                              <span style={{fontSize:8,padding:"1px 5px",borderRadius:3,
+                                background:"rgba(245,158,11,0.15)",color:"#f59e0b",letterSpacing:"0.06em"}}>QTR</span>
+                            )}
+                            <span style={{fontSize:12,fontWeight:500,color:"#e8edf5"}}>{benefit.name}</span>
+                            {benefit.note && (
+                              <button onClick={()=>setShowNote(benefit)} style={{
+                                background:"transparent",border:"none",color:"#3b82f6",
+                                fontSize:11,cursor:"pointer",padding:"0 2px",lineHeight:1,
+                              }}>ⓘ</button>
+                            )}
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+                            <span style={{fontSize:8,padding:"1px 6px",borderRadius:4,
+                              background:`${CARD_COLOR[benefit.card]}20`,color:CARD_COLOR[benefit.card],
+                              letterSpacing:"0.04em"}}>{benefit.card}</span>
+                            <span style={{fontSize:8,color:"#4a5a6e"}}>{benefit.cadence}</span>
+                          </div>
+                        </div>
+                        <div style={{textAlign:"right",flexShrink:0}}>
+                          <div style={{fontSize:14,fontWeight:500,color:used>0?"#10b981":"#4a5a6e"}}>{fmt(used)}</div>
+                          <div style={{fontSize:9,color:"#4a5a6e"}}>of {fmt(benefit.annual)}</div>
+                          {remaining>0 && used>0 && (
+                            <div style={{fontSize:8,color:"#ef4444"}}>{fmt(remaining)} left</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div style={{height:3,borderRadius:2,background:"#1a2535",marginBottom:8,overflow:"hidden"}}>
+                        <div style={{height:"100%",borderRadius:2,
+                          width:`${pct*100}%`,
+                          background:pct>=1?"#10b981":pct>0.5?"#3b82f6":"#6366f1",
+                          transition:"width 0.4s ease"}}/>
+                      </div>
+
+                      {/* Month entry */}
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <div style={{fontSize:9,color:"#4a5a6e"}}>{MONTHS[activeMonth]}</div>
+                        {isEditing ? (
+                          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                            <input
+                              autoFocus
+                              type="number"
+                              value={inputVal}
+                              onChange={e=>setInputVal(e.target.value)}
+                              onKeyDown={e=>e.key==="Enter"&&handleSave(benefit.id)}
+                              placeholder="0"
+                              style={{width:80,padding:"5px 8px",
+                                background:"#0a0f1e",border:"1px solid #3b82f6",
+                                borderRadius:6,color:"#e8edf5",
+                                fontFamily:"'DM Mono',monospace",fontSize:13,
+                                textAlign:"right",outline:"none"}}
+                            />
+                            <button onClick={()=>handleSave(benefit.id)} style={{
+                              padding:"5px 12px",borderRadius:6,
+                              background:"#10b981",border:"none",
+                              color:"#fff",fontSize:11,
+                              fontFamily:"'DM Mono',monospace",cursor:"pointer"}}>✓</button>
+                            <button onClick={()=>setEditingId(null)} style={{
+                              padding:"5px 8px",borderRadius:6,
+                              background:"transparent",border:"1px solid #1f2d40",
+                              color:"#4a5a6e",fontSize:11,
+                              fontFamily:"'DM Mono',monospace",cursor:"pointer"}}>✕</button>
+                          </div>
+                        ):(
+                          <button onClick={()=>{setEditingId(benefit.id);setInputVal(monthVal||"");}} style={{
+                            padding:"5px 14px",borderRadius:6,
+                            background:monthVal>0?"rgba(16,185,129,0.1)":"rgba(59,130,246,0.08)",
+                            border:`1px solid ${monthVal>0?"rgba(16,185,129,0.3)":"rgba(59,130,246,0.2)"}`,
+                            color:monthVal>0?"#10b981":"#3b82f6",
+                            fontSize:12,cursor:"pointer",
+                            fontFamily:"'DM Mono',monospace",
+                          }}>
+                            {monthVal>0?`${fmt(monthVal)} ✓`:"+ log"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ══ SUMMARY VIEW ══ */}
+      {view==="summary" && (
+        <div style={{padding:"14px 10px 80px"}}>
+
+          {/* Portfolio card */}
+          <div style={{...styles.card,marginBottom:12}}>
+            <div style={{fontSize:9,color:"#4a5a6e",letterSpacing:"0.1em",marginBottom:10}}>PORTFOLIO</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+              {[
+                {label:"Annual Fees", val:grandAF,   color:"#ef4444", neg:true},
+                {label:"Available",   val:grandAvail, color:"#7a8ba0"},
+                {label:"Captured",    val:grandUsed,  color:"#10b981"},
+              ].map(({label,val,color,neg})=>(
+                <div key={label} style={{textAlign:"center"}}>
+                  <div style={{fontSize:8,color:"#4a5a6e",marginBottom:4,letterSpacing:"0.06em"}}>{label}</div>
+                  <div style={{fontSize:15,fontWeight:500,color}}>{neg?"−":""}{fmt(val)}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{height:5,borderRadius:3,background:"#1a2535",overflow:"hidden",marginBottom:6}}>
+              <div style={{height:"100%",borderRadius:3,
+                width:`${Math.min(grandUsed/grandAvail*100,100)}%`,
+                background:"linear-gradient(90deg,#3b82f6,#10b981)",
+                transition:"width 0.6s ease"}}/>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <span style={{fontSize:9,color:"#4a5a6e"}}>{pctStr(grandUsed/grandAvail)} of credits captured</span>
+              <span style={{fontSize:9,color:grandNet>=0?"#10b981":"#ef4444",fontWeight:500}}>
+                net {grandNet>=0?"+":""}{fmt(grandNet)}
+              </span>
+            </div>
+          </div>
+
+          {/* Per-card */}
+          {CARDS.map(card=>{
+            const used  = totalForCard(card.name);
+            const avail = availForCard(card.name);
+            const net   = used - card.af;
+            const pct   = Math.min(used/Math.max(avail,1),1);
+            const afPct = Math.min(used/Math.max(card.af,1),1);
+            const color = CARD_COLOR[card.name];
+            return (
+              <div key={card.name} style={{...styles.card,borderLeft:`3px solid ${color}`,marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:500,color:"#e8edf5",marginBottom:3}}>{card.name}</div>
+                    <div style={{fontSize:9,color:"#4a5a6e"}}>
+                      AF <span style={{color:"#ef4444"}}>{fmt(card.af)}</span>
+                      {"  ·  "}avail <span style={{color:"#7a8ba0"}}>{fmt(avail)}</span>
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:16,fontWeight:500,color:used>0?"#10b981":"#4a5a6e"}}>{fmt(used)}</div>
+                    <div style={{fontSize:9,color:net>=0?"#10b981":"#ef4444"}}>
+                      {net>=0?"+":""}{fmt(net)} net
+                    </div>
+                  </div>
+                </div>
+
+                {[
+                  {label:"CREDITS CAPTURED", pct, color},
+                  {label:"FEE OFFSET",        pct:afPct, color:afPct>=1?"#10b981":"#6366f1"},
+                ].map(({label,pct:p,color:c})=>(
+                  <div key={label} style={{marginBottom:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                      <span style={{fontSize:8,color:"#4a5a6e",letterSpacing:"0.06em"}}>{label}</span>
+                      <span style={{fontSize:8,color:p>=1?"#10b981":"#4a5a6e"}}>{pctStr(p)}</span>
+                    </div>
+                    <div style={{height:4,borderRadius:2,background:"#1a2535",overflow:"hidden"}}>
+                      <div style={{height:"100%",borderRadius:2,width:`${p*100}%`,background:c,transition:"width 0.5s ease"}}/>
+                    </div>
+                  </div>
+                ))}
+
+                <div style={{borderTop:"1px solid #1a2535",paddingTop:8,marginTop:4}}>
+                  {BENEFITS.filter(b=>b.card===card.name).map(b=>{
+                    const u = totalForBenefit(b.id);
+                    return (
+                      <div key={b.id} style={{display:"flex",justifyContent:"space-between",
+                        alignItems:"center",padding:"3px 0"}}>
+                        <span style={{fontSize:9,color:"#7a8ba0"}}>{b.name}</span>
+                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <span style={{fontSize:9,color:u>0?"#10b981":"#4a5a6e"}}>{fmt(u)}</span>
+                          <span style={{fontSize:8,color:"#2a3a4e"}}>/ {fmt(b.annual)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* STATUS BAR */}
+      <div style={{
+        position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",
+        width:"100%",maxWidth:430,
+        background:"rgba(10,15,30,0.96)",
+        backdropFilter:"blur(20px)",
+        borderTop:"1px solid #1a2535",
+        padding:"8px 16px 16px",
+        display:"flex",justifyContent:"center",
+      }}>
+        <div style={{fontSize:9,color:"#2a3a4e",letterSpacing:"0.08em"}}>
+          {view==="tracker"
+            ? `LOGGING ${MONTHS[activeMonth].toUpperCase()}  ·  TAP ROW TO ENTER AMOUNT`
+            : "YEAR-TO-DATE SUMMARY  ·  ALL CARDS"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── STYLES ──────────────────────────────────────────────────
+const styles = {
+  screen: {
+    display:"flex",alignItems:"center",justifyContent:"center",
+    minHeight:"100vh",background:"#0a0f1e",padding:20,
+  },
+  app: {
+    background:"#0a0f1e",minHeight:"100vh",maxWidth:430,margin:"0 auto",
+    position:"relative",
+  },
+  header: {
+    position:"sticky",top:0,zIndex:100,
+    background:"rgba(10,15,30,0.96)",
+    backdropFilter:"blur(20px)",
+    WebkitBackdropFilter:"blur(20px)",
+    borderBottom:"1px solid #1f2d40",
+    padding:"14px 14px 0",
+  },
+  title: {
+    fontFamily:"'Fraunces',Georgia,serif",
+    fontSize:20,fontWeight:300,letterSpacing:"-0.02em",
+  },
+  subtitle: { fontSize:10,color:"#4a5a6e",letterSpacing:"0.1em",marginTop:4 },
+  card: {
+    background:"#111827",borderRadius:12,
+    border:"1px solid #1a2535",padding:14,
+  },
+  setupCard: {
+    width:"100%",maxWidth:380,
+    background:"#111827",borderRadius:16,
+    border:"1px solid #1f2d40",padding:24,
+  },
+  inputLabel: { fontSize:10,color:"#7a8ba0",letterSpacing:"0.06em",marginBottom:6 },
+  input: {
+    width:"100%",padding:"10px 12px",
+    background:"#0a0f1e",border:"1px solid #1f2d40",
+    borderRadius:8,color:"#e8edf5",
+    fontFamily:"'DM Mono',monospace",fontSize:13,
+    outline:"none",
+  },
+  btnPrimary: {
+    width:"100%",padding:"12px 0",
+    background:"#3b82f6",border:"none",borderRadius:8,
+    color:"#fff",fontSize:12,cursor:"pointer",
+    fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em",
+    fontWeight:500,
+  },
+  btnGhost: {
+    width:"100%",padding:"10px 0",
+    background:"transparent",border:"1px solid #1f2d40",
+    borderRadius:8,color:"#7a8ba0",fontSize:12,cursor:"pointer",
+    fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em",
+  },
+  overlay: {
+    position:"fixed",inset:0,zIndex:200,
+    background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",
+    display:"flex",alignItems:"center",justifyContent:"center",padding:20,
+  },
+  modal: {
+    background:"#111827",borderRadius:14,
+    border:"1px solid #1f2d40",padding:20,
+    maxWidth:340,width:"100%",
+  },
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
